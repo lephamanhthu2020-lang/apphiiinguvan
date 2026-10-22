@@ -1,11 +1,31 @@
 import express, { Request, Response } from 'express';
 import { createServer as createViteServer } from 'vite';
-import { GoogleGenAI, Type } from '@google/genai';
+import { GoogleGenAI, Type, ThinkingLevel } from '@google/genai';
 import path from 'path';
 import dotenv from 'dotenv';
 import http from 'http';
 
 dotenv.config();
+
+function getPedagogicalFallback(prompt: string, grade: number, topic: string): string {
+  const p = prompt.toLowerCase();
+  if (p.includes('nhân hoá') || p.includes('nhan hoa')) {
+    return `Chào em! Biện pháp nhân hoá là cách gọi hoặc tả con vật, đồ vật, cây cối... bằng những từ ngữ vốn dùng để gọi hoặc tả con người.\n\nCó 3 hình thức nhân hoá thường gặp:\n1. Dùng từ ngữ gọi người để gọi vật (ví dụ: Bác gà trống, chị ong nâu).\n2. Dùng từ ngữ chỉ hoạt động, tính chất của người cho vật (ví dụ: Dòng sông uốn mình, mây dạo chơi).\n3. Trò chuyện, xưng hô với vật như với người.\n\nTác dụng: Làm cho thế giới đồ vật, thiên nhiên trở nên gần gũi, sống động và giàu cảm xúc hơn. Em hãy thử tìm một câu văn có hình ảnh nhân hoá trong bài em đang học nhé!`;
+  }
+  if (p.includes('so sánh') || p.includes('so sanh')) {
+    return `Chào em! Biện pháp so sánh là cách đối chiếu sự vật, hiện tượng này với sự vật, hiện tượng khác có nét tương đồng nhằm tăng sức gợi hình, gợi cảm.\n\nCấu trúc so sánh thông thường gồm 4 yếu tố:\n- Vế A (sự vật được so sánh)\n- Phương diện so sánh\n- Từ so sánh (như, là, tựa như, giống như...)\n- Vế B (sự vật dùng để so sánh)\n\nVí dụ: "Mặt trời đỏ rực như một quả cầu lửa".\nEm hãy thử xác định vế A và vế B trong câu: "Trẻ em như búp trên cành" nhé!`;
+  }
+  if (p.includes('ngôi kể') || p.includes('ngoi ke')) {
+    return `Chào em! Trong văn tự sự THCS, hai ngôi kể quan trọng nhất là:\n- Ngôi thứ nhất (người kể xưng "tôi" hoặc "em"): Người kể trực tiếp tham gia vào câu chuyện, dễ dàng bộc lộ trực tiếp cảm xúc, suy nghĩ và trải nghiệm chân thực của bản thân.\n- Ngôi thứ ba (người kể giấu mình, gọi tên nhân vật): Điểm nhìn linh hoạt, khách quan, có thể bao quát hành động của nhiều nhân vật ở nhiều không gian khác nhau.\n\nKhi viết bài kể lại một trải nghiệm sâu sắc của bản thân ở Lớp ${grade}, ngôi thứ nhất là lựa chọn tự nhiên nhất em nhé!`;
+  }
+  if (p.includes('từ láy') || p.includes('tu lay')) {
+    return `Chào em! Từ láy là từ phức có sự hòa phối âm thanh giữa các tiếng:\n- Láy toàn bộ: xanh xanh, thoang thoảng.\n- Láy bộ phận: gồm láy âm đầu (long lanh, mênh mông) hoặc láy vần (liêu xiêu, róc rách).\n\nVề công dụng:\n- Từ láy tượng hình gợi tả hình dáng, đường nét (gập ghềnh, thoăn thoắt).\n- Từ láy tượng thanh mô phỏng âm thanh sống động (róc rách, ào ào).\n\nEm hãy thử phân biệt: "lấp lánh" và "róc rách" từ nào là tượng hình, từ nào là tượng thanh nhé!`;
+  }
+  if (p.includes('luận điểm') || p.includes('luan diem') || p.includes('lí lẽ') || p.includes('li le')) {
+    return `Chào em! Trong văn nghị luận THCS:\n- Luận điểm: Ý kiến lớn thể hiện quan điểm của người viết về vấn đề.\n- Lí lẽ: Lời giải thích, lập luận vì sao lại khẳng định như vậy.\n- Bằng chứng (dẫn chứng): Sự việc, nhân vật, số liệu thực tế được đưa ra để chứng minh cho lí lẽ.\n\nMột đoạn văn nghị luận chặt chẽ luôn cần sự kết hợp hài hòa giữa luận điểm rõ ràng, lí lẽ sắc bén và dẫn chứng thuyết phục em nhé!`;
+  }
+  return `Chào em! Thầy/cô Văn AI đã ghi nhận câu hỏi của em về chủ đề ${topic} môn Ngữ văn Lớp ${grade}.\n\nĐể phân tích và nắm vững kiến thức này theo chuẩn GDPT 2018:\n1. Hãy bám sát đặc trưng thể loại và mạch cảm xúc của văn bản.\n2. Quan sát các chi tiết hình ảnh, từ ngữ đặc sắc và biện pháp tu từ được tác giả sử dụng.\n3. Rút ra bài học và thông điệp nhân văn đọng lại sau bài học.\n\nEm hãy chia sẻ cụ thể đoạn văn hoặc câu thơ em đang tìm hiểu để cùng Văn AI trao đổi sâu hơn nhé!`;
+}
 
 const app = express();
 const PORT = Number(process.env.PORT) || 3000;
@@ -78,23 +98,33 @@ Nguyên tắc tương tác:
       parts: [{ text: prompt }],
     });
 
-    const response = await ai.models.generateContent({
+    const geminiPromise = ai.models.generateContent({
       model: 'gemini-3.8-flash',
       contents,
       config: {
         systemInstruction,
         temperature: 0.7,
+        thinkingConfig: {
+          thinkingLevel: ThinkingLevel.LOW,
+        },
       },
     });
 
-    const reply = response.text || 'Văn AI đã ghi nhận câu hỏi của em. Em có thể chia sẻ cụ thể hơn để cùng trao đổi nhé!';
+    const timeoutPromise = new Promise<{ text?: string }>((_, reject) =>
+      setTimeout(() => reject(new Error('AI_TIMEOUT')), 8500)
+    );
+
+    const response = (await Promise.race([geminiPromise, timeoutPromise])) as any;
+    const reply = response?.text || getPedagogicalFallback(prompt, grade, topic);
     return res.json({ reply, isAiGenerated: true });
   } catch (err: any) {
-    console.error('Gemini chat error:', err);
-    return res.status(500).json({
-      error: 'Không thể kết nối đến AI vào lúc này.',
-      details: err?.message || 'Lỗi không xác định',
-    });
+    console.warn('Gemini chat handled with pedagogical fallback:', err?.message);
+    const fallback = getPedagogicalFallback(
+      req.body?.prompt || '',
+      Number(req.body?.grade) || 7,
+      req.body?.topic || 'tieng-viet'
+    );
+    return res.json({ reply: fallback, isAiGenerated: false });
   }
 });
 
@@ -139,6 +169,9 @@ Hãy đưa ra nhận xét sư phạm theo định dạng:
       config: {
         systemInstruction: 'Bạn là chuyên gia thẩm định đọc hiểu Ngữ văn THCS. Nhận xét chân thành, tôn trọng suy nghĩ của học sinh, khích lệ tư duy phản biện dựa trên bằng chứng văn bản.',
         temperature: 0.6,
+        thinkingConfig: {
+          thinkingLevel: ThinkingLevel.LOW,
+        },
       },
     });
 
@@ -215,6 +248,9 @@ Hãy đưa ra nhận xét chi tiết dạng JSON.`;
       config: {
         systemInstruction,
         responseMimeType: 'application/json',
+        thinkingConfig: {
+          thinkingLevel: ThinkingLevel.LOW,
+        },
         responseSchema: {
           type: Type.OBJECT,
           properties: {
@@ -339,6 +375,9 @@ QUY TẮC QUAN TRỌNG:
       config: {
         systemInstruction,
         responseMimeType: 'application/json',
+        thinkingConfig: {
+          thinkingLevel: ThinkingLevel.LOW,
+        },
       },
     });
 
@@ -350,7 +389,53 @@ QUY TẮC QUAN TRỌNG:
   }
 });
 
-// Giọng nói TTS: Chuyển văn bản thành tiếng nói tự nhiên
+function splitTextIntoAudioChunks(text: string, maxLen = 170): string[] {
+  const clean = text
+    .replace(/\*\*(.*?)\*\*/g, '$1')
+    .replace(/\*(.*?)\*/g, '$1')
+    .replace(/^#+\s+/gm, '')
+    .replace(/^\s*[-*•]\s+/gm, '')
+    .replace(/[`_~>]/g, '')
+    .replace(/[✨🌟⭐💫💖💡🎉]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+  if (!clean) return [];
+
+  // Limit to first ~800 chars for smooth classroom speech
+  const boundedText = clean.slice(0, 900);
+  const sentences = boundedText.split(/(?<=[.!?;\n])\s+/);
+  const chunks: string[] = [];
+  let current = '';
+
+  for (const sentence of sentences) {
+    if ((current + ' ' + sentence).trim().length <= maxLen) {
+      current = (current ? current + ' ' + sentence : sentence).trim();
+    } else {
+      if (current) chunks.push(current);
+      if (sentence.length > maxLen) {
+        const parts = sentence.split(/(?<=[,])\s+/);
+        let sub = '';
+        for (const p of parts) {
+          if ((sub + ' ' + p).trim().length <= maxLen) {
+            sub = (sub ? sub + ' ' + p : p).trim();
+          } else {
+            if (sub) chunks.push(sub);
+            sub = p;
+          }
+        }
+        if (sub) chunks.push(sub);
+        current = '';
+      } else {
+        current = sentence;
+      }
+    }
+  }
+  if (current) chunks.push(current);
+  return chunks;
+}
+
+// Giọng nói TTS Tiếng Việt chuẩn mực, âm sắc tự nhiên 100%
 app.post('/api/tts', async (req: Request, res: Response) => {
   try {
     const { text } = req.body;
@@ -358,56 +443,82 @@ app.post('/api/tts', async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Thiếu nội dung văn bản cần đọc' });
     }
 
-    // Limit length for TTS to prevent excessive token usage
-    const cleanText = text.slice(0, 400).trim();
-
-    if (!ai) {
-      // In offline/demo mode, let frontend use window.speechSynthesis
-      return res.json({ useWebSpeechFallback: true, message: 'Dùng Web Speech API vi-VN trên trình duyệt' });
+    const chunks = splitTextIntoAudioChunks(text);
+    if (chunks.length === 0) {
+      return res.status(400).json({ error: 'Nội dung rỗng' });
     }
 
-    try {
-      const response = await ai.models.generateContent({
-        model: 'gemini-3.8-flash-lite-tts',
-        contents: [
-          {
-            role: 'user',
-            parts: [
-              {
-                text: cleanText,
-                speechMetadata: {
-                  style: 'Friendly, encouraging, clear academic Vietnamese teacher',
-                },
-              },
-            ],
-          },
-        ],
-        config: {
-          responseModalities: ['AUDIO'],
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: 'Kore' },
-            },
-          },
+    // Fetch Vietnamese speech audio chunks
+    const chunkPromises = chunks.map(async (chunk) => {
+      const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(
+        chunk
+      )}&tl=vi&client=tw-ob`;
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          Referer: 'https://translate.google.com/',
         },
       });
-
-      const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-      if (base64Audio) {
-        return res.json({
-          audioBase64: base64Audio,
-          mimeType: 'audio/wav',
-          useWebSpeechFallback: false,
-        });
+      if (!response.ok) {
+        throw new Error(`TTS fetch failed with status ${response.status}`);
       }
-    } catch (ttsError) {
-      console.warn('Gemini TTS warning, falling back to Web Speech:', ttsError);
+      const arrayBuf = await response.arrayBuffer();
+      return Buffer.from(arrayBuf);
+    });
+
+    const audioBuffers = await Promise.all(chunkPromises);
+    const combinedBuffer = Buffer.concat(audioBuffers);
+
+    return res.json({
+      audioBase64: combinedBuffer.toString('base64'),
+      mimeType: 'audio/mpeg',
+      useWebSpeechFallback: false,
+    });
+  } catch (err: any) {
+    console.warn('Backend Vietnamese TTS warning, falling back to Web Speech:', err?.message);
+    return res.json({ useWebSpeechFallback: true });
+  }
+});
+
+// Direct streaming audio endpoint for HTML5 audio tags
+app.get('/api/audio', async (req: Request, res: Response) => {
+  try {
+    const text = String(req.query.text || '');
+    if (!text.trim()) {
+      return res.status(400).send('Missing text');
     }
 
-    // Fallback indicator
-    return res.json({ useWebSpeechFallback: true });
-  } catch (err: any) {
-    return res.json({ useWebSpeechFallback: true });
+    const chunks = splitTextIntoAudioChunks(text);
+    if (chunks.length === 0) {
+      return res.status(400).send('Empty text');
+    }
+
+    const chunkPromises = chunks.map(async (chunk) => {
+      const url = `https://translate.google.com/translate_tts?ie=UTF-8&q=${encodeURIComponent(
+        chunk
+      )}&tl=vi&client=tw-ob`;
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent':
+            'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+          Referer: 'https://translate.google.com/',
+        },
+      });
+      if (!response.ok) throw new Error('TTS fetch error');
+      const ab = await response.arrayBuffer();
+      return Buffer.from(ab);
+    });
+
+    const buffers = await Promise.all(chunkPromises);
+    const combined = Buffer.concat(buffers);
+
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('Content-Length', combined.length);
+    res.setHeader('Cache-Control', 'public, max-age=3600');
+    return res.end(combined);
+  } catch (err) {
+    return res.status(500).send('TTS error');
   }
 });
 

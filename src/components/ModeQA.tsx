@@ -32,16 +32,31 @@ export const ModeQA: React.FC<ModeQAProps> = ({
 }) => {
   const [inputText, setInputText] = useState('');
   const chatBottomRef = useRef<HTMLDivElement>(null);
+  const prevListeningRef = useRef<boolean>(false);
+  const transcriptRef = useRef<string>('');
 
   useEffect(() => {
     chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, isLoading]);
 
   useEffect(() => {
+    transcriptRef.current = transcript;
     if (transcript) {
       setInputText(transcript);
     }
   }, [transcript]);
+
+  // When listening completes (silence detected or user stops), auto-send the question if valid!
+  useEffect(() => {
+    if (prevListeningRef.current && !isListening) {
+      const spokenText = (transcriptRef.current || inputText).trim();
+      if (spokenText.length >= 3 && !isLoading) {
+        setInputText('');
+        onSendMessage(spokenText);
+      }
+    }
+    prevListeningRef.current = isListening;
+  }, [isListening, isLoading, onSendMessage]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -49,6 +64,20 @@ export const ModeQA: React.FC<ModeQAProps> = ({
     const text = inputText.trim();
     setInputText('');
     onSendMessage(text);
+  };
+
+  const handleStopAndSendImmediately = () => {
+    const textToSend = (transcript.trim() || inputText.trim());
+    onStopListening();
+    if (textToSend && !isLoading) {
+      setInputText('');
+      onSendMessage(textToSend);
+    }
+  };
+
+  const handleCancelListening = () => {
+    onStopListening();
+    setInputText('');
   };
 
   const handleSelectSuggestion = (prompt: string) => {
@@ -183,18 +212,35 @@ export const ModeQA: React.FC<ModeQAProps> = ({
 
       {/* Listening State Banner */}
       {isListening && (
-        <div className="px-4 py-2 bg-violet-600 text-white text-xs flex items-center justify-between gap-3 animate-pulse">
-          <div className="flex items-center gap-2">
-            <Mic className="w-4 h-4 text-amber-300" />
-            <span>Đang thu giọng nói học sinh bằng tiếng Việt... (Hãy nói rõ ràng vào micro)</span>
+        <div className="px-4 py-2.5 bg-gradient-to-r from-violet-700 to-indigo-800 text-white text-xs flex flex-wrap items-center justify-between gap-3 shadow-md border-t border-violet-500">
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <span className="p-1 rounded-full bg-rose-500 animate-ping">
+              <Mic className="w-3.5 h-3.5 text-white" />
+            </span>
+            <div className="truncate">
+              <span className="font-bold text-amber-300">Đang lắng nghe: </span>
+              <span className="italic font-medium">
+                {inputText || transcript || 'Hãy nói câu hỏi vào micro...'}
+              </span>
+            </div>
           </div>
-          <button
-            type="button"
-            onClick={onStopListening}
-            className="px-2 py-0.5 rounded bg-white/20 hover:bg-white/30 text-[11px] font-bold cursor-pointer"
-          >
-            Dừng nghe
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={handleStopAndSendImmediately}
+              className="px-3 py-1 rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white text-xs font-bold transition-all shadow-xs cursor-pointer flex items-center gap-1"
+            >
+              <Send className="w-3.5 h-3.5" />
+              <span>Gửi câu hỏi</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleCancelListening}
+              className="px-2.5 py-1 rounded-lg bg-white/20 hover:bg-white/30 text-white text-xs font-medium cursor-pointer"
+            >
+              Hủy
+            </button>
+          </div>
         </div>
       )}
 

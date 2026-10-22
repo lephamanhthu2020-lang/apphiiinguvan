@@ -1,6 +1,10 @@
 {
   "name": "VĂN AI – Trợ giảng Ngữ văn THCS (Lớp 6–9)",
   "description": "Ứng dụng trợ giảng Ngữ văn THCS tương tác trực tiếp với nhân vật robot Văn AI thông minh, hỗ trợ Hỏi đáp, Đố vui, Đọc hiểu, Luyện viết và Sơ đồ tư duy chuẩn GDPT 2018.",
-  "requestFramePermissions": ["microphone"],
-  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+  "requestFramePermissions": [
+    "microphone"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
 }

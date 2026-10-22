@@ -73,10 +73,10 @@ export const ModeReading: React.FC<ModeReadingProps> = ({
   }, [currentPassage, activeQuestionId]);
 
   useEffect(() => {
-    if (transcript) {
-      setStudentAnswer((prev) => (prev ? `${prev} ${transcript}` : transcript));
+    if (transcript && isListening) {
+      setStudentAnswer(transcript);
     }
-  }, [transcript]);
+  }, [transcript, isListening]);
 
   const activeQuestion: ReadingQuestion | undefined = currentPassage?.questions.find(
     (q) => q.id === activeQuestionId
