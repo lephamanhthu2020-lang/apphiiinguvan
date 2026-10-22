@@ -1,0 +1,120 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: 'Be Vietnam Pro', system-ui, -apple-system, sans-serif;
+    color: #1e1b4b;
+    background-color: #f8fafc;
+    overflow-x: hidden;
+  }
+
+  h1, h2, h3, .font-serif-vi {
+    font-family: 'Playfair Display', Georgia, 'Be Vietnam Pro', serif;
+  }
+}
+
+/* Animations for Van AI Character */
+@keyframes floatGentle {
+  0%, 100% {
+    transform: translateY(0px) rotate(0deg);
+  }
+  50% {
+    transform: translateY(-8px) rotate(0.8deg);
+  }
+}
+
+@keyframes eyeBlink {
+  0%, 92%, 100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.1);
+  }
+}
+
+@keyframes haloPulse {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(0.96);
+  }
+  50% {
+    opacity: 0.95;
+    transform: scale(1.08);
+  }
+}
+
+@keyframes thinkingOrbit {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes soundWave {
+  0%, 100% {
+    transform: scaleY(0.3);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+@keyframes starGlow {
+  0%, 100% {
+    opacity: 0.3;
+    transform: scale(0.8) rotate(0deg);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.2) rotate(45deg);
+  }
+}
+
+.animate-van-float {
+  animation: floatGentle 4.5s ease-in-out infinite;
+}
+
+.animate-van-blink {
+  animation: eyeBlink 3.8s ease-in-out infinite;
+}
+
+.animate-van-halo {
+  animation: haloPulse 2s ease-in-out infinite;
+}
+
+.animate-van-orbit {
+  animation: thinkingOrbit 3s linear infinite;
+}
+
+.animate-star-glow {
+  animation: starGlow 1.8s ease-in-out infinite;
+}
+
+/* Reduced Motion Mode */
+.reduced-motion *,
+.reduced-motion {
+  animation: none !important;
+  transition: none !important;
+}
+
+/* Custom scrollbars for literature passages and chat */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
